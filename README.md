@@ -2,6 +2,7 @@
 
 __ronda-routing-bidi__ offers a [ronda-routing](https://github.com/xsc/ronda/tree/master/ronda-routing) `RouteDescriptor` for [bidi](https://github.com/juxt/bidi).
 
+[![Build Status](https://travis-ci.org/xsc/ronda-routing-bidi.svg)](https://travis-ci.org/xsc/ronda-routing-bidi)
 [![endorse](https://api.coderwall.com/xsc/endorsecount.png)](https://coderwall.com/xsc)
 
 ## Usage
