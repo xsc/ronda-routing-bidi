@@ -2,14 +2,18 @@
   (:require [midje.sweet :refer :all]
             [ronda.routing
              [bidi :as bidi]
-             [descriptor :as describe]]))
+             [descriptor :as describe]
+             [prefix :as p]]))
 
 (def digit #"\d+")
 
 (tabular
   (fact "about bidi route listing."
-        (let [d (bidi/descriptor ?routes)]
-          (describe/routes d) => ?list))
+        (let [d (bidi/descriptor ?routes)
+              r (describe/routes d)]
+          (into {} (map (juxt key (comp :path val)) r)) => ?list
+          (map (comp :methods val) r) => (has every? empty?)
+          ))
   ?routes, ?list
   ["/" :endpoint]
   {:endpoint "/"}
@@ -28,12 +32,14 @@
                     "/c" :c}}]
   {:a ["/a/" :id]
    :b ["/b/" :id]
-   :c ["/b/" :id "/c"]}
+   :c ["/b/" :id "/c"]})
 
-  ["/" {"article" {:get :article, :put :save-article}}]
-  {:article "/article"
-   :save-article "/article"})
-
+(fact "about bidi route listing + methods."
+      (describe/routes
+        (bidi/descriptor
+          ["/" {"article" {:get :article, :put :save-article}}]))
+      => {:article {:path "/article", :methods #{:get}}
+          :save-article {:path "/article", :methods #{:put}}})
 
 (let [d (bidi/descriptor
           ["/" {["a/" :id] :a
@@ -41,9 +47,9 @@
                       [:id "/" :action] :c}}])]
   (tabular
     (fact "about bidi route matching."
-        (let [r (describe/match d :get ?uri)]
-          (:id r) => ?id
-          (:route-params r) => ?route-params))
+          (let [r (describe/match d :get ?uri)]
+            (:id r) => ?id
+            (:route-params r) => ?route-params))
     ?uri              ?id      ?route-params
     "/a/id"           :a       {:id "id"}
     "/b/id"           :b       {:id "id"}
@@ -66,4 +72,34 @@
         (describe/generate
           (bidi/descriptor [["/" [digit :id]] :x])
           :x {:id "abc"})
-        => (throws Exception #"not compatible")))
+        => (throws Exception #"not compatible"))
+  (let [route-prefix ["/" [#"de|fr|us" :locale]]
+        route-path "/de/b/id/go"
+        route-params {:locale "de", :id "id", :action "go"}
+        d' (p/prefix d route-prefix)]
+    (tabular
+      (fact "about prefixed routes."
+            (-> (describe/routes d') ?endpoint :path)
+            => (reduce conj route-prefix ?suffix))
+      ?endpoint ?suffix
+      :a        ["/a/" :id]
+      :b        ["/b/" :id]
+      :c        ["/b/" :id "/" :action])
+    (fact "about matching prefixed routes."
+          (describe/match d' :get "/a/id") => nil?
+          (describe/match d' :get route-path)
+          => {:id :c
+              :route-params route-params})
+    (fact "about generating prefixed routes."
+          (describe/generate d' :d route-params)
+          => (throws Exception #"unknown route ID")
+          (describe/generate d' :c (assoc route-params :locale "nl"))
+          => (throws Exception #"not compatible")
+          (describe/generate d' :c route-params)
+          => {:path         route-path
+              :route-params route-params
+              :query-params {}}
+          (describe/generate d' :a route-params)
+          => {:path         "/de/a/id"
+              :route-params (dissoc route-params :action)
+              :query-params {:action "go"}})))

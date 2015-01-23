@@ -50,36 +50,73 @@
          (vary-meta route assoc :route-params))))
 
 (defn- remove-empty-segments
+  "Remove all empty string segments from the given route."
   [route]
-  (if (string? route)
-    route
-    (vec (remove #{""} route))))
+  (vec (remove #{""} route)))
+
+(defn- wrap-method
+  "Create ':method/<method>' keyword."
+  [method]
+  {:pre [(keyword? method)]}
+  (keyword "method" (name method)))
+
+(defn- unwrap-method
+  "Create method from ':method/<method>' keyword."
+  [k]
+  {:pre [(= (namespace k) "method")]}
+  (keyword (name k)))
+
+(defn- path->map
+  [path]
+  (-> (if (string? path)
+        {:path path}
+        (reduce
+          (fn [m s]
+            (if (and (keyword? s)
+                     (= (namespace s) "method"))
+              (update-in m [:methods] (fnil conj #{}) (unwrap-method s))
+              (update-in m [:path] conj s)))
+          {:path []}
+          path))
+      (update-in [:path] unwrap-single-string)
+      (with-meta (meta path))))
 
 (defn- normalize-path
+  "Normalize the given path by prefixing it, merging all strings"
   [prefix path]
   (->> (append-route prefix path)
        (merge-strings)
-       (unwrap-single-string)
        (remove-empty-segments)
+       (unwrap-single-string)
        (attach-route-params-meta)))
 
-(defn- analyze
+(defn- analyze*
   "Analyze the given bidi route spec and produce a map
    of route ID -> flattened route spec."
   [routes]
   (if (vector? routes)
     (let [[prefix spec] routes]
-      (->> (for [[id path] (analyze spec)]
+      (->> (for [[id path] (analyze* spec)]
              [id (normalize-path prefix path)])
            (into {})))
     (if (map? routes)
       (->> (for [[k v] routes]
-             (analyze
+             (analyze*
                (vector
-                 (if (keyword? k) "" k)
+                 (if (keyword? k)
+                   (wrap-method k)
+                   k)
                  v)))
            (into {}))
       {routes []})))
+
+(defn- analyze
+  "Analyze the given bidi route spec and produce a map
+   of route ID -> map of `:path` and `:methods`."
+  [routes]
+  (->> (analyze* routes)
+       (map (juxt key (comp path->map val)))
+       (into {})))
 
 ;; ## Generate
 
@@ -123,6 +160,12 @@
     {:id           (:handler m)
      :route-params (into {} (:route-params m))}))
 
+(defn- prefix-bidi-route
+  "Prefix the given bidi route spec."
+  [routes v]
+  {:pre [(= (count routes) 2)]}
+  [v {(first routes) (second routes)}])
+
 ;; ## Descriptor
 
 (deftype BidiDescriptor [raw-routes analyzed-routes]
@@ -138,13 +181,29 @@
       analyzed-routes
       route-id
       values))
+  (prefix-string [_ s]
+    (let [new-routes (prefix-bidi-route raw-routes s)]
+      (BidiDescriptor.
+        new-routes
+        (analyze new-routes))))
+  (prefix-route-param [_ k pattern]
+    (let [new-routes (->> (if pattern
+                            [pattern k]
+                            k)
+                          (vector)
+                          (prefix-bidi-route raw-routes))]
+      (BidiDescriptor.
+        new-routes
+        (analyze new-routes))))
   (routes [_]
     analyzed-routes))
 
 (defn descriptor
   "Create RouteDescriptor based on bidi routes."
   [routes]
-  (->BidiDescriptor
+  {:pre [(vector? routes)
+         (= (count routes) 2)]}
+  (BidiDescriptor.
     ;; should be: (bidi/compile-route routes), but juxt/bidi#17
     routes
     (analyze routes)))
