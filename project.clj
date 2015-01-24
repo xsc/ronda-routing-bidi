@@ -8,9 +8,6 @@
                  [bidi "1.15.0" :exclusions [com.keminglabs/cljx]]]
   :profiles {:dev {:dependencies [[midje "1.6.3"]
                                   [joda-time "2.7"]]
-                   :plugins [[lein-midje "3.1.3"]
-                             [codox "0.8.10"]]
-                   :codox {:project {:name "ronda/routing-bidi"
-                                     :defaults {:doc/format :markdown}}}}}
+                   :plugins [[lein-midje "3.1.3"]]}}
   :aliases {"test" ["midje"]}
   :pedantic? :abort)
