@@ -4,8 +4,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
-                 [ronda/routing "0.1.0-SNAPSHOT"]
-                 [bidi "1.15.0" :exclusions [com.keminglabs/cljx]]]
+                 [org.clojure/tools.reader "0.8.13"]
+                 [ronda/routing "0.1.0-RC1"]
+                 [clj-time "0.9.0"]
+                 [bidi "1.15.0"
+                  :exclusions [org.clojure/clojurescript
+                               com.keminglabs/cljx
+                               commons-fileupload]]]
   :profiles {:dev {:dependencies [[midje "1.6.3"]
                                   [joda-time "2.7"]]
                    :plugins [[lein-midje "3.1.3"]]}}
