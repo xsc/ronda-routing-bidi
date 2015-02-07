@@ -41,6 +41,28 @@
       => {:article {:path "/article", :methods #{:get}}
           :save-article {:path "/article", :methods #{:put}}})
 
+(fact "about bidi metadata."
+      (let [d (describe/update-metadata
+                (bidi/descriptor ["/" :test])
+                :test #(assoc % :json? true))
+            d' (describe/prefix-string d "/api")]
+        (describe/match d :get "/")
+        => {:id :test
+            :route-params {}
+            :meta {:json? true}}
+
+        (describe/generate d :test {})
+        => {:path "/"
+            :route-params {}
+            :query-params {}
+            :meta {:json? true}}
+
+        (describe/routes d)
+        => {:test {:path "/", :meta {:json? true}}}
+
+        (describe/routes d')
+        => {:test {:path "/api/", :meta {:json? true}}}))
+
 (let [d (bidi/descriptor
           ["/" {["a/" :id] :a
                 "b/" {[:id] :b

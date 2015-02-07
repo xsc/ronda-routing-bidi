@@ -110,12 +110,19 @@
            (into {}))
       {routes []})))
 
+(defn- attach-existing-meta
+  [existing routes]
+  (for [[route-id m] routes
+        :let [mta (get-in existing [route-id :meta])]]
+    [route-id (if mta (assoc m :meta mta) m)]))
+
 (defn- analyze
   "Analyze the given bidi route spec and produce a map
    of route ID -> map of `:path` and `:methods`."
-  [routes]
+  [routes & [existing]]
   (->> (analyze* routes)
        (map (juxt key (comp path->map val)))
+       (attach-existing-meta existing)
        (into {})))
 
 ;; ## Generate
@@ -128,17 +135,17 @@
        (apply bidi/path-for raw-routes route-id)))
 
 (defn- generate-route
-  "Generate map of `:path`, `:route-params`, `:query-params`
+  "Generate map of `:path`, `:route-params`, `:query-params` and `:meta`
    for the given route ID."
   [raw-routes analyzed-routes route-id values]
-  (let [route-params (-> (get analyzed-routes route-id)
-                         (meta)
-                         (:route-params))
+  (let [{mta :meta :as data} (get analyzed-routes route-id)
+        route-params (-> data meta :route-params)
         params (stringify-vals values)]
     (if-let [path (generate-route-path raw-routes route-id params)]
-      {:path  path
-       :route-params (select-keys params route-params)
-       :query-params (apply dissoc params route-params)}
+      (cond-> {:path  path
+               :route-params (select-keys params route-params)
+               :query-params (reduce dissoc params route-params)}
+        mta (assoc :meta mta))
       (throw
         (ex-info
           (format "unknown route ID: %s" route-id)
@@ -155,10 +162,12 @@
 (defn- match-bidi-route
   "Match bidi route with method, return map with `:id`
    and `:route-params`."
-  [routes method uri]
-  (if-let [m (bidi-match routes method uri)]
-    {:id           (:handler m)
-     :route-params (into {} (:route-params m))}))
+  [routes analyzed-routes method uri]
+  (if-let [{:keys [handler route-params]} (bidi-match routes method uri)]
+    (let [mta (get-in analyzed-routes [handler :meta])]
+      (cond-> {:id handler
+               :route-params (into {} route-params)}
+        mta (assoc :meta mta)))))
 
 (defn- prefix-bidi-route
   "Prefix the given bidi route spec."
@@ -173,6 +182,7 @@
   (match [_ request-method uri]
     (match-bidi-route
       raw-routes
+      analyzed-routes
       request-method
       uri))
   (generate [_ route-id values]
@@ -181,11 +191,22 @@
       analyzed-routes
       route-id
       values))
+  (update-metadata [this route-id f]
+    (->> (if (contains? analyzed-routes route-id)
+           (update-in analyzed-routes [route-id :meta] f)
+           (throw
+             (IllegalArgumentException.
+               (format "no such route: %s" route-id))))
+         (BidiDescriptor. raw-routes)))
+  (routes [_]
+    analyzed-routes)
+
+  describe/PrefixableRouteDescriptor
   (prefix-string [_ s]
     (let [new-routes (prefix-bidi-route raw-routes s)]
       (BidiDescriptor.
         new-routes
-        (analyze new-routes))))
+        (analyze new-routes analyzed-routes))))
   (prefix-route-param [_ k pattern]
     (let [new-routes (->> (if pattern
                             [pattern k]
@@ -194,9 +215,7 @@
                           (prefix-bidi-route raw-routes))]
       (BidiDescriptor.
         new-routes
-        (analyze new-routes))))
-  (routes [_]
-    analyzed-routes))
+        (analyze new-routes analyzed-routes)))))
 
 (defn descriptor
   "Create RouteDescriptor based on bidi routes."
