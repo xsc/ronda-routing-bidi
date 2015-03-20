@@ -162,8 +162,9 @@
 (defn- match-bidi-route
   "Match bidi route with method, return map with `:id`
    and `:route-params`."
-  [routes analyzed-routes method uri]
-  (if-let [{:keys [handler route-params]} (bidi-match routes method uri)]
+  [compiled-routes analyzed-routes method uri]
+  (if-let [{:keys [handler route-params]}
+           (bidi-match compiled-routes method uri)]
     (let [mta (get-in analyzed-routes [handler :meta])]
       (cond-> {:id handler
                :route-params (into {} route-params)}
@@ -177,11 +178,13 @@
 
 ;; ## Descriptor
 
-(deftype BidiDescriptor [raw-routes analyzed-routes]
+(deftype BidiDescriptor [raw-routes
+                         compiled-routes
+                         analyzed-routes]
   describe/RouteDescriptor
   (match [_ request-method uri]
     (match-bidi-route
-      raw-routes
+      compiled-routes
       analyzed-routes
       request-method
       uri))
@@ -197,7 +200,7 @@
            (throw
              (IllegalArgumentException.
                (format "no such route: %s" route-id))))
-         (BidiDescriptor. raw-routes)))
+         (BidiDescriptor. raw-routes compiled-routes)))
   (routes [_]
     analyzed-routes)
 
@@ -206,6 +209,7 @@
     (let [new-routes (prefix-bidi-route raw-routes s)]
       (BidiDescriptor.
         new-routes
+        (bidi/compile-route new-routes)
         (analyze new-routes analyzed-routes))))
   (prefix-route-param [_ k pattern]
     (let [new-routes (->> (if pattern
@@ -215,6 +219,7 @@
                           (prefix-bidi-route raw-routes))]
       (BidiDescriptor.
         new-routes
+        (bidi/compile-route new-routes)
         (analyze new-routes analyzed-routes)))))
 
 (defn descriptor
@@ -223,6 +228,6 @@
   {:pre [(vector? routes)
          (= (count routes) 2)]}
   (BidiDescriptor.
-    ;; should be: (bidi/compile-route routes), but juxt/bidi#17
     routes
+    (bidi/compile-route routes)
     (analyze routes)))
