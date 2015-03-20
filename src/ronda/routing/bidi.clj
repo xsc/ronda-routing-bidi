@@ -1,6 +1,7 @@
 (ns ronda.routing.bidi
   (:require [ronda.routing
              [descriptor :as describe]
+             [generate :refer [generate-by]]
              [utils :refer [stringify-vals]]]
             [bidi.bidi :as bidi]))
 
@@ -127,30 +128,22 @@
 
 ;; ## Generate
 
-(defn- generate-route-path
-  "Generate path for the given route ID."
-  [raw-routes route-id values]
-  (->> values
-       (apply concat)
-       (apply bidi/path-for raw-routes route-id)))
-
 (defn- generate-route
   "Generate map of `:path`, `:route-params`, `:query-params` and `:meta`
    for the given route ID."
-  [raw-routes analyzed-routes route-id values]
-  (let [{mta :meta :as data} (get analyzed-routes route-id)
-        route-params (-> data meta :route-params)
-        params (stringify-vals values)]
-    (if-let [path (generate-route-path raw-routes route-id params)]
-      (cond-> {:path  path
-               :route-params (select-keys params route-params)
-               :query-params (reduce dissoc params route-params)}
-        mta (assoc :meta mta))
-      (throw
-        (ex-info
-          (format "unknown route ID: %s" route-id)
-          {:route-id route-id
-           :values values})))))
+  [analyzed-routes route-id values]
+  (if-let [{:keys [path] mta :meta :as data} (get analyzed-routes route-id)]
+    (if-let [route-path (generate-by path values)]
+      (let [route-params (-> data meta :route-params)]
+        (cond-> {:path  route-path
+                 :route-params (select-keys values route-params)
+                 :query-params (reduce dissoc values route-params)}
+          mta (assoc :meta mta))))
+    (throw
+      (ex-info
+        (format "unknown route ID: %s" route-id)
+        {:route-id route-id
+         :values values}))))
 
 ;; ## Match
 
@@ -190,7 +183,6 @@
       uri))
   (generate [_ route-id values]
     (generate-route
-      raw-routes
       analyzed-routes
       route-id
       values))

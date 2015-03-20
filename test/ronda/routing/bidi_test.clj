@@ -85,7 +85,7 @@
             (:query-params r) => ?query-params))
     ?id ?values                  ?path       ?route-params            ?query-params
     :a  {:id "id"}               "/a/id"     {:id "id"}               {}
-    :a  {:id "id", :c 0}         "/a/id"     {:id "id"}               {:c "0"}
+    :a  {:id "id", :c 0}         "/a/id"     {:id "id"}               {:c 0}
     :c  {:id "id", :action "go"} "/b/id/go"  {:id "id", :action "go"} {})
   (fact "about exceptions."
         (describe/generate d :unknown {})
