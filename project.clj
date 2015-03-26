@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0-alpha5"]
                  [org.clojure/tools.reader "0.8.16"]
-                 [ronda/routing "0.2.3"]
+                 [ronda/routing "0.2.4"]
                  [clj-time "0.9.0"]
                  [bidi "1.18.9"
                   :exclusions [org.clojure/clojurescript
