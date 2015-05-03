@@ -3,9 +3,9 @@
   :url "https://github.com/xsc/ronda-routing-bidi"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.7.0-beta1"]
-                 [org.clojure/tools.reader "0.9.1"]
-                 [ronda/routing "0.2.5"]
+  :dependencies [[org.clojure/clojure "1.7.0-beta2"]
+                 [org.clojure/tools.reader "0.9.2"]
+                 [ronda/routing "0.2.7"]
                  [clj-time "0.9.0"]
                  [bidi "1.18.10"
                   :exclusions [org.clojure/clojurescript
