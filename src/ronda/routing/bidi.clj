@@ -91,25 +91,33 @@
        (unwrap-single-string)
        (attach-route-params-meta)))
 
+(defn- route-subtree?
+  [value]
+  (or (map? value)
+      (and (vector? value)
+           (every? vector? value))))
+
 (defn- analyze*
   "Analyze the given bidi route spec and produce a map
    of route ID -> flattened route spec."
   [routes]
-  (if (vector? routes)
-    (let [[prefix spec] routes]
-      (->> (for [[id path] (analyze* spec)]
-             [id (normalize-path prefix path)])
-           (into {})))
-    (if (map? routes)
-      (->> (for [[k v] routes]
-             (analyze*
-               (vector
-                 (if (keyword? k)
-                   (wrap-method k)
-                   k)
-                 v)))
-           (into {}))
-      {routes []})))
+  (cond (route-subtree? routes)
+        (->> (for [[k v] routes]
+               (analyze*
+                 (vector
+                   (if (keyword? k)
+                     (wrap-method k)
+                     k)
+                   v)))
+             (into {}))
+
+        (vector? routes)
+        (let [[prefix spec] routes]
+          (->> (for [[id path] (analyze* spec)]
+                 [id (normalize-path prefix path)])
+               (into {})))
+
+        :else  {routes []}))
 
 (defn- attach-existing-meta
   [existing routes]

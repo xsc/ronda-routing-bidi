@@ -32,7 +32,10 @@
                     "/c" :c}}]
   {:a ["/a/" :id]
    :b ["/b/" :id]
-   :c ["/b/" :id "/c"]})
+   :c ["/b/" :id "/c"]}
+
+  ["/" [["a" :a] ["b" :b]]]
+  {:a "/a", :b "/b"})
 
 (fact "about bidi route listing + methods."
       (describe/routes
