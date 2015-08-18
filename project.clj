@@ -1,8 +1,10 @@
 (defproject ronda/routing-bidi "0.1.3-SNAPSHOT"
   :description "ronda RouteDescriptor for bidi."
   :url "https://github.com/xsc/ronda-routing-bidi"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:name "MIT License"
+            :url "http://opensource.org/licenses/MIT"
+            :year 2015
+            :key "mit"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.reader "0.9.2"]
                  [ronda/routing "0.2.7"]
