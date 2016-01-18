@@ -1,4 +1,4 @@
-(defproject ronda/routing-bidi "0.1.3-SNAPSHOT"
+(defproject ronda/routing-bidi "0.1.3"
   :description "ronda RouteDescriptor for bidi."
   :url "https://github.com/xsc/ronda-routing-bidi"
   :license {:name "MIT License"
